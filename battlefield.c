@@ -490,6 +490,14 @@ int deployEquipment(Battlefield* battlefield, Team team) {
             return 1;
         }
         
+        // 检查是否为指挥部类型，不允许在常规部署阶段部署指挥部
+        if (typeId == 11) {
+            printf("指挥部只能在游戏开始阶段部署！\n");
+            printf("按任意键继续...\n");
+            getch();
+            continue;
+        }
+        
         EquipmentType* type = getEquipmentTypeById(typeId);
         if (!type) {
             printf("无效的装备类型ID！\n");
@@ -635,6 +643,13 @@ int occupyHeadquartersArea(Battlefield* battlefield, int x, int y, Team team, Eq
 int deployHeadquarters(Battlefield* battlefield, Team team) {
     char teamName[10];
     strcpy(teamName, team == TEAM_RED ? "红方" : "蓝方");
+    
+    // 检查是否已经部署过指挥部
+    if ((team == TEAM_RED && battlefield->redHQDeployed) ||
+        (team == TEAM_BLUE && battlefield->blueHQDeployed)) {
+        printf("%s指挥部已经部署，不能重复部署！\n", teamName);
+        return 1;  // 返回1表示"成功"，因为指挥部已存在
+    }
     
     printf("\n开始部署%s指挥部 (4x4区域)...\n", teamName);
     printf("请输入指挥部左上角的坐标 (x y): ");
