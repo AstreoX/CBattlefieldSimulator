@@ -199,20 +199,36 @@ int checkVictory(Battlefield* battlefield) {
 
 // 模拟一步对抗
 int simulateStep(Battlefield* battlefield) {
-    // 处理红方装备
+    // 先处理所有装备的移动
+    // 处理红方装备移动
     for (int i = 0; i < battlefield->redCount; i++) {
         Equipment* equipment = battlefield->redEquipments[i];
         if (equipment->isActive) {
             handleMovement(battlefield, equipment);
-            handleAttack(battlefield, equipment);
         }
     }
 
-    // 处理蓝方装备
+    // 处理蓝方装备移动
     for (int i = 0; i < battlefield->blueCount; i++) {
         Equipment* equipment = battlefield->blueEquipments[i];
         if (equipment->isActive) {
             handleMovement(battlefield, equipment);
+        }
+    }
+    
+    // 再处理所有装备的攻击
+    // 处理红方装备攻击
+    for (int i = 0; i < battlefield->redCount; i++) {
+        Equipment* equipment = battlefield->redEquipments[i];
+        if (equipment->isActive) {
+            handleAttack(battlefield, equipment);
+        }
+    }
+
+    // 处理蓝方装备攻击
+    for (int i = 0; i < battlefield->blueCount; i++) {
+        Equipment* equipment = battlefield->blueEquipments[i];
+        if (equipment->isActive) {
             handleAttack(battlefield, equipment);
         }
     }
