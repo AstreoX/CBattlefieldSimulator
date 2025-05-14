@@ -1,26 +1,21 @@
 # Ignore the problematic nul file
 nul
 
-# Compiled Object files
-*.slo
-*.lo
+# Object files
 *.o
+*.ko
 *.obj
+*.elf
 
 # Precompiled Headers
 *.gch
 *.pch
 
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
+# Libraries
 *.lib
+*.a
+*.la
+*.lo
 
 # Executables
 *.exe
@@ -30,32 +25,14 @@ nul
 *.x86_64
 *.hex
 
-# IDE specific files
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Build directory
-build/
-bin/
-
 # Debug files
 *.dSYM/
 *.su
 *.idb
 *.pdb
 
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
 # IDE-specific files
+.idea/
 .vs/
 *.suo
 *.user
