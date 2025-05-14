@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <conio.h>
+#include <string.h>
 
 #define MAX_EQUIPMENTS_PER_TEAM 50
 #define DEFAULT_BUDGET 10000
@@ -13,46 +14,73 @@ void displayEquipmentInfo(Equipment* equipment);
 void initBattlefield(Battlefield* battlefield, int width, int height) {
     battlefield->width = width;
     battlefield->height = height;
-    battlefield->redCount = 0;
-    battlefield->blueCount = 0;
-    battlefield->maxEquipments = MAX_EQUIPMENTS_PER_TEAM;
-    battlefield->redBudget = DEFAULT_BUDGET;
-    battlefield->blueBudget = DEFAULT_BUDGET;
-    battlefield->redRemainingBudget = DEFAULT_BUDGET;
-    battlefield->blueRemainingBudget = DEFAULT_BUDGET;
-
-    // 分配二维格子数组内存
+    
+    // 分配单元格数组内存
     battlefield->cells = (Cell**)malloc(height * sizeof(Cell*));
     for (int i = 0; i < height; i++) {
         battlefield->cells[i] = (Cell*)malloc(width * sizeof(Cell));
+        
+        // 初始化单元格
         for (int j = 0; j < width; j++) {
             battlefield->cells[i][j].status = CELL_EMPTY;
             battlefield->cells[i][j].equipment = NULL;
         }
     }
-
+    
     // 分配装备数组内存
-    battlefield->redEquipments = (Equipment**)malloc(MAX_EQUIPMENTS_PER_TEAM * sizeof(Equipment*));
-    battlefield->blueEquipments = (Equipment**)malloc(MAX_EQUIPMENTS_PER_TEAM * sizeof(Equipment*));
+    battlefield->maxEquipments = MAX_EQUIPMENTS_PER_TEAM;
+    battlefield->redEquipments = (Equipment**)malloc(battlefield->maxEquipments * sizeof(Equipment*));
+    battlefield->blueEquipments = (Equipment**)malloc(battlefield->maxEquipments * sizeof(Equipment*));
+    
+    // 初始化计数器和预算
+    battlefield->redCount = 0;
+    battlefield->blueCount = 0;
+    battlefield->redBudget = 10000;
+    battlefield->blueBudget = 10000;
+    battlefield->redRemainingBudget = battlefield->redBudget;
+    battlefield->blueRemainingBudget = battlefield->blueBudget;
+    
+    // 初始化指挥部
+    battlefield->redHeadquarters = NULL;
+    battlefield->blueHeadquarters = NULL;
+    battlefield->redHQDeployed = 0;
+    battlefield->blueHQDeployed = 0;
 }
 
 // 释放战场资源
 void freeBattlefield(Battlefield* battlefield) {
-    // 释放装备资源
-    for (int i = 0; i < battlefield->redCount; i++) {
-        free(battlefield->redEquipments[i]);
-    }
-    for (int i = 0; i < battlefield->blueCount; i++) {
-        free(battlefield->blueEquipments[i]);
-    }
-    free(battlefield->redEquipments);
-    free(battlefield->blueEquipments);
-
-    // 释放格子资源
+    // 先释放单元格内存
     for (int i = 0; i < battlefield->height; i++) {
         free(battlefield->cells[i]);
     }
     free(battlefield->cells);
+    
+    // 释放装备内存
+    for (int i = 0; i < battlefield->redCount; i++) {
+        if (battlefield->redEquipments[i] && 
+            battlefield->redEquipments[i]->typeId != 11) { // 不在这里释放指挥部，避免重复释放
+            free(battlefield->redEquipments[i]);
+        }
+    }
+    
+    for (int i = 0; i < battlefield->blueCount; i++) {
+        if (battlefield->blueEquipments[i] && 
+            battlefield->blueEquipments[i]->typeId != 11) { // 不在这里释放指挥部，避免重复释放
+            free(battlefield->blueEquipments[i]);
+        }
+    }
+    
+    free(battlefield->redEquipments);
+    free(battlefield->blueEquipments);
+    
+    // 单独释放指挥部内存
+    if (battlefield->redHeadquarters) {
+        free(battlefield->redHeadquarters);
+    }
+    
+    if (battlefield->blueHeadquarters) {
+        free(battlefield->blueHeadquarters);
+    }
 }
 
 // 获取战场格子
@@ -544,5 +572,98 @@ int deployEquipment(Battlefield* battlefield, Team team) {
         getch();
     }
     
+    return 1;
+}
+
+// 占用4x4区域部署指挥部
+int occupyHeadquartersArea(Battlefield* battlefield, int x, int y, Team team, Equipment* headquarters) {
+    // 检查4x4区域是否完全在战场内且在己方半场
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            int checkX = x + j;
+            int checkY = y + i;
+            
+            // 检查坐标是否有效
+            if (!isPositionValid(battlefield, checkX, checkY)) {
+                printf("指挥部超出战场范围！\n");
+                return 0;
+            }
+            
+            // 检查是否在己方半场
+            if (!isPositionInOwnHalf(battlefield, checkX, checkY, team)) {
+                printf("指挥部必须部署在己方半场！\n");
+                return 0;
+            }
+            
+            // 检查是否已被占用
+            Cell* cell = getCell(battlefield, checkX, checkY);
+            if (cell->status != CELL_EMPTY) {
+                printf("指挥部区域已被占用！\n");
+                return 0;
+            }
+        }
+    }
+    
+    // 占用整个4x4区域
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            int occupyX = x + j;
+            int occupyY = y + i;
+            
+            Cell* cell = getCell(battlefield, occupyX, occupyY);
+            
+            // 只将左上角的位置与指挥部关联
+            if (i == 0 && j == 0) {
+                cell->equipment = headquarters;
+            } else {
+                // 其他位置只标记为占用状态
+                cell->equipment = NULL;
+            }
+            
+            cell->status = team == TEAM_RED ? CELL_OCCUPIED_RED : CELL_OCCUPIED_BLUE;
+        }
+    }
+    
+    // 设置指挥部位置
+    headquarters->x = x;
+    headquarters->y = y;
+    
+    return 1;
+}
+
+// 部署指挥部到战场
+int deployHeadquarters(Battlefield* battlefield, Team team) {
+    char teamName[10];
+    strcpy(teamName, team == TEAM_RED ? "红方" : "蓝方");
+    
+    printf("\n开始部署%s指挥部 (4x4区域)...\n", teamName);
+    printf("请输入指挥部左上角的坐标 (x y): ");
+    
+    int x, y;
+    scanf("%d %d", &x, &y);
+    
+    // 创建指挥部装备
+    Equipment* headquarters = createEquipment(11, team, x, y, 0, 0);
+    if (!headquarters) {
+        printf("创建指挥部失败！\n");
+        return 0;
+    }
+    
+    // 占用4x4区域
+    if (!occupyHeadquartersArea(battlefield, x, y, team, headquarters)) {
+        free(headquarters);
+        return 0;
+    }
+    
+    // 保存指挥部引用并更新部署状态
+    if (team == TEAM_RED) {
+        battlefield->redHeadquarters = headquarters;
+        battlefield->redHQDeployed = 1;
+    } else {
+        battlefield->blueHeadquarters = headquarters;
+        battlefield->blueHQDeployed = 1;
+    }
+    
+    printf("%s指挥部部署成功！\n", teamName);
     return 1;
 } 

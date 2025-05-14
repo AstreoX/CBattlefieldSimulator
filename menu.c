@@ -728,7 +728,19 @@ void startBattleSimulation() {
     loadEquipmentTypes("equipment_types.txt");
     loadEquipmentInteractions("equipment_interactions.txt");
     
-    printf("战场已初始化，开始部署装备...\n");
+    printf("战场已初始化，开始部署指挥部...\n");
+    waitForKeyPress();
+    
+    // 部署红蓝双方指挥部
+    while (!deployHeadquarters(&battlefield, TEAM_RED)) {
+        printf("请重新部署红方指挥部\n");
+    }
+    
+    while (!deployHeadquarters(&battlefield, TEAM_BLUE)) {
+        printf("请重新部署蓝方指挥部\n");
+    }
+    
+    printf("指挥部部署完成，接下来部署作战单位...\n");
     waitForKeyPress();
     
     // 部署红蓝双方装备

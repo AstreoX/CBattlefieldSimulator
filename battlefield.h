@@ -30,6 +30,10 @@ typedef struct {
     int blueBudget;              // 蓝方预算
     int redRemainingBudget;      // 红方剩余预算
     int blueRemainingBudget;     // 蓝方剩余预算
+    Equipment* redHeadquarters;  // 红方指挥部
+    Equipment* blueHeadquarters; // 蓝方指挥部
+    int redHQDeployed;           // 红方指挥部是否已部署
+    int blueHQDeployed;          // 蓝方指挥部是否已部署
 } Battlefield;
 
 // 初始化战场
@@ -40,6 +44,9 @@ void freeBattlefield(Battlefield* battlefield);
 
 // 部署装备到战场
 int deployEquipment(Battlefield* battlefield, Team team);
+
+// 部署指挥部到战场
+int deployHeadquarters(Battlefield* battlefield, Team team);
 
 // 渲染战场
 // viewOnly参数如果不是TEAM_NONE，则只显示指定队伍的装备
@@ -62,5 +69,8 @@ int isPositionInOwnHalf(Battlefield* battlefield, int x, int y, Team team);
 
 // 检查是否有路径障碍
 int hasPathObstacle(Battlefield* battlefield, int x1, int y1, int x2, int y2, int ignoreFlying);
+
+// 占用4x4区域部署指挥部
+int occupyHeadquartersArea(Battlefield* battlefield, int x, int y, Team team, Equipment* headquarters);
 
 #endif // BATTLEFIELD_H 

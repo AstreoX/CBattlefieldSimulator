@@ -169,6 +169,17 @@ int checkVictory(Battlefield* battlefield) {
     int redActive = 0;
     int blueActive = 0;
 
+    // 检查指挥部是否被摧毁
+    if (battlefield->redHQDeployed && (!battlefield->redHeadquarters->isActive)) {
+        printf("\n红方指挥部被摧毁！蓝方获胜！\n");
+        return 2; // 蓝方获胜
+    }
+    
+    if (battlefield->blueHQDeployed && (!battlefield->blueHeadquarters->isActive)) {
+        printf("\n蓝方指挥部被摧毁！红方获胜！\n");
+        return 1; // 红方获胜
+    }
+
     // 统计双方活跃装备数量
     for (int i = 0; i < battlefield->redCount; i++) {
         if (battlefield->redEquipments[i]->isActive) {
