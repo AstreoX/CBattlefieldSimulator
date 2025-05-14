@@ -1,0 +1,40 @@
+# Ignore the problematic nul file
+nul
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# IDE-specific files
+.idea/
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates 
