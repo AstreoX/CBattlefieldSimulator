@@ -140,4 +140,7 @@ char getTerrainChar(TerrainType terrain);
 // 初始化地形配置
 void initTerrainConfig(TerrainConfig* config);
 
+// 地形生成菜单
+int terrainGenerationMenu(Battlefield* battlefield);
+
 #endif // BATTLEFIELD_H 

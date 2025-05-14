@@ -617,8 +617,8 @@ void initBattlefield(Battlefield* battlefield, int width, int height) {
         }
     }
 
-    // 初始化地形
-    initBattlefieldTerrain(battlefield);
+    // 使用地形生成菜单
+    terrainGenerationMenu(battlefield);
 }
 
 // 释放战场资源
@@ -1206,4 +1206,198 @@ int deployHeadquarters(Battlefield* battlefield, Team team) {
     
     printf("%s指挥部部署成功！\n", teamName);
     return 1;
+}
+
+// 创建地图文件夹
+static void createMapDirectory() {
+    #ifdef _WIN32
+    system("if not exist map mkdir map");
+    #else
+    system("mkdir -p map");
+    #endif
+}
+
+// 获取地图文件列表
+static int getMapFiles(char** mapFiles, int maxFiles) {
+    int count = 0;
+    #ifdef _WIN32
+    FILE* pipe = _popen("dir /b map\\*.txt", "r");
+    #else
+    FILE* pipe = popen("ls map/*.txt", "r");
+    #endif
+    
+    if (!pipe) return 0;
+    
+    char buffer[256];
+    while (fgets(buffer, sizeof(buffer), pipe) && count < maxFiles) {
+        // 移除换行符
+        buffer[strcspn(buffer, "\n")] = 0;
+        mapFiles[count] = strdup(buffer);
+        count++;
+    }
+    
+    #ifdef _WIN32
+    _pclose(pipe);
+    #else
+    pclose(pipe);
+    #endif
+    
+    return count;
+}
+
+// 从文件加载地图
+static int loadMapFromFile(Battlefield* battlefield, const char* filename) {
+    char fullPath[512];
+    snprintf(fullPath, sizeof(fullPath), "map/%s", filename);
+    
+    FILE* file = fopen(fullPath, "r");
+    if (!file) {
+        printf("无法打开地图文件: %s\n", fullPath);
+        return 0;
+    }
+    
+    char buffer[256];
+    int y = 0;
+    
+    while (fgets(buffer, sizeof(buffer), file) && y < battlefield->height) {
+        for (int x = 0; x < battlefield->width && buffer[x] != '\n' && buffer[x] != '\0'; x++) {
+            switch (buffer[x]) {
+                case '.': battlefield->cells[y][x].terrain = TERRAIN_PLAIN; break;
+                case '^': battlefield->cells[y][x].terrain = TERRAIN_MOUNTAIN; break;
+                case '*': battlefield->cells[y][x].terrain = TERRAIN_FOREST; break;
+                case '~': battlefield->cells[y][x].terrain = TERRAIN_WATER; break;
+                case '=': battlefield->cells[y][x].terrain = TERRAIN_ROAD; break;
+                default: battlefield->cells[y][x].terrain = TERRAIN_PLAIN;
+            }
+        }
+        y++;
+    }
+    
+    fclose(file);
+    return 1;
+}
+
+// 显示地图预览
+static void previewMap(Battlefield* battlefield) {
+    printf("\n地图预览:\n");
+    renderBattlefield(battlefield, TEAM_NONE);
+    printf("\n按任意键继续...");
+    getch();
+}
+
+// 地形生成菜单
+int terrainGenerationMenu(Battlefield* battlefield) {
+    while (1) {
+        system("cls");
+        printf("=== 地形生成菜单 ===\n");
+        printf("1. 随机生成地形\n");
+        printf("2. 从本地文件加载地图\n");
+        printf("0. 返回\n");
+        printf("请选择: ");
+        
+        int choice;
+        scanf("%d", &choice);
+        getchar(); // 清除输入缓冲
+        
+        switch (choice) {
+            case 1:
+                initBattlefieldTerrain(battlefield);
+                return 1;
+                
+            case 2: {
+                createMapDirectory();
+                char* mapFiles[100];
+                int mapCount = getMapFiles(mapFiles, 100);
+                
+                if (mapCount == 0) {
+                    printf("\n没有找到地图文件！\n");
+                    printf("请将地图文件(.txt)放在map文件夹中。\n");
+                    printf("按任意键继续...");
+                    getch();
+                    continue;
+                }
+                
+                while (1) {
+                    system("cls");
+                    printf("=== 可用地图文件 ===\n");
+                    for (int i = 0; i < mapCount; i++) {
+                        printf("%d. %s\n", i + 1, mapFiles[i]);
+                    }
+                    printf("0. 返回\n");
+                    printf("请选择地图文件: ");
+                    
+                    int mapChoice;
+                    scanf("%d", &mapChoice);
+                    getchar();
+                    
+                    if (mapChoice == 0) {
+                        break;
+                    }
+                    
+                    if (mapChoice > 0 && mapChoice <= mapCount) {
+                        if (loadMapFromFile(battlefield, mapFiles[mapChoice - 1])) {
+                            previewMap(battlefield);
+                            printf("\n是否使用此地图？(Y/N): ");
+                            char confirm;
+                            scanf("%c", &confirm);
+                            getchar();
+                            
+                            if (confirm == 'Y' || confirm == 'y') {
+                                // 释放地图文件名内存
+                                for (int i = 0; i < mapCount; i++) {
+                                    free(mapFiles[i]);
+                                }
+                                return 1;
+                            }
+                        }
+                    }
+                }
+                
+                // 释放地图文件名内存
+                for (int i = 0; i < mapCount; i++) {
+                    free(mapFiles[i]);
+                }
+                break;
+            }
+                
+            case 0:
+                return 0;
+                
+            default:
+                printf("\n无效的选择！\n");
+                printf("按任意键继续...");
+                getch();
+        }
+    }
+}
+
+// 更新装备位置
+void updateEquipmentPosition(Equipment* equipment, float deltaTime) {
+    if (!equipment || !equipment->isActive) return;
+
+    // 获取当前地形类型
+    int terrainType = battlefield.terrain[equipment->y][equipment->x].type;
+
+    // 更新装备速度（考虑地形影响）
+    updateEquipmentSpeed(equipment, terrainType);
+
+    // 计算移动距离
+    float moveDistance = equipment->currentSpeed * deltaTime;
+
+    // 计算新位置
+    float newX = equipment->x + equipment->directionX * moveDistance;
+    float newY = equipment->y + equipment->directionY * moveDistance;
+
+    // 检查新位置是否有效
+    if (newX >= 0 && newX < battlefield.width && newY >= 0 && newY < battlefield.height) {
+        // 获取新位置的地形类型
+        int newTerrainType = battlefield.terrain[(int)newY][(int)newX].type;
+
+        // 检查是否可以移动到新位置
+        EquipmentType* type = getEquipmentTypeById(equipment->typeId);
+        if (type && (type->canFly || newTerrainType != TERRAIN_WATER)) {
+            equipment->x = newX;
+            equipment->y = newY;
+        }
+    }
 } 

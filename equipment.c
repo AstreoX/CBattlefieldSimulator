@@ -1,4 +1,5 @@
 #include "equipment.h"
+#include "battlefield.h"
 #include <math.h>
 
 // 全局装备类型数组
@@ -20,42 +21,30 @@ int loadEquipmentTypes(const char* filename) {
         return 0;
     }
 
-    // 首先计算装备类型数量
-    int count = 0;
-    char buffer[256];
-    while (fgets(buffer, sizeof(buffer), file)) {
-        if (buffer[0] != '#' && strlen(buffer) > 5) { // 跳过注释行和空行
-            count++;
-        }
+    // 读取装备类型数量
+    fscanf(file, "%d", &g_equipmentTypesCount);
+    g_equipmentTypes = (EquipmentType*)malloc(g_equipmentTypesCount * sizeof(EquipmentType));
+
+    // 读取每个装备类型的数据
+    for (int i = 0; i < g_equipmentTypesCount; i++) {
+        fscanf(file, "%d,%[^,],%d,%d,%d,%d,%d,%d,%d,%f,%f,%f,%f,%f",
+            &g_equipmentTypes[i].typeId,
+            g_equipmentTypes[i].name,
+            &g_equipmentTypes[i].cost,
+            &g_equipmentTypes[i].maxHealth,
+            &g_equipmentTypes[i].maxSpeed,
+            &g_equipmentTypes[i].maxAttackRadius,
+            &g_equipmentTypes[i].maxAmmo,
+            &g_equipmentTypes[i].maxFireRate,
+            &g_equipmentTypes[i].canFly,
+            &g_equipmentTypes[i].plainSpeed,
+            &g_equipmentTypes[i].mountainSpeed,
+            &g_equipmentTypes[i].forestSpeed,
+            &g_equipmentTypes[i].waterSpeed,
+            &g_equipmentTypes[i].roadSpeed
+        );
     }
 
-    // 重置文件指针
-    rewind(file);
-
-    // 分配内存
-    g_equipmentTypes = (EquipmentType*)malloc(count * sizeof(EquipmentType));
-    if (!g_equipmentTypes) {
-        printf("内存分配失败\n");
-        fclose(file);
-        return 0;
-    }
-
-    // 读取装备类型
-    int index = 0;
-    while (fgets(buffer, sizeof(buffer), file)) {
-        if (buffer[0] == '#' || strlen(buffer) <= 5) { // 跳过注释行和空行
-            continue;
-        }
-
-        EquipmentType* type = &g_equipmentTypes[index];
-        sscanf(buffer, "%d,%[^,],%d,%d,%d,%d,%d,%d,%d",
-               &type->typeId, type->name, &type->cost, &type->maxHealth,
-               &type->maxSpeed, &type->maxAttackRadius, &type->maxAmmo,
-               &type->maxFireRate, &type->canFly);
-        index++;
-    }
-
-    g_equipmentTypesCount = count;
     fclose(file);
     return 1;
 }
@@ -132,27 +121,28 @@ EquipmentInteraction* getInteraction(int attackerId, int defenderId) {
 Equipment* createEquipment(int typeId, Team team, int x, int y, int dirX, int dirY) {
     EquipmentType* type = getEquipmentTypeById(typeId);
     if (!type) {
+        printf("无效的装备类型ID: %d\n", typeId);
         return NULL;
     }
 
     Equipment* equipment = (Equipment*)malloc(sizeof(Equipment));
     if (!equipment) {
+        printf("内存分配失败\n");
         return NULL;
     }
 
     equipment->id = g_nextEquipmentId++;
     equipment->typeId = typeId;
-    equipment->team = team;
     strcpy(equipment->name, type->name);
-    equipment->currentHealth = type->maxHealth;
-    equipment->currentSpeed = type->maxSpeed;
-    equipment->currentAmmo = type->maxAmmo;
+    equipment->team = team;
     equipment->x = x;
     equipment->y = y;
     equipment->directionX = dirX;
     equipment->directionY = dirY;
-    equipment->deployTime = 0;
+    equipment->currentHealth = type->maxHealth;
+    equipment->currentAmmo = type->maxAmmo;
     equipment->isActive = 1;
+    equipment->currentSpeed = type->maxSpeed;
 
     return equipment;
 }
@@ -217,4 +207,80 @@ int canAttack(Equipment* attacker, Equipment* defender, int distance) {
     }
 
     return 1;
+}
+
+// 更新装备速度（考虑地形影响）
+void updateEquipmentSpeed(Equipment* equipment, int terrainType) {
+    if (!equipment || !equipment->isActive) return;
+
+    EquipmentType* type = getEquipmentTypeById(equipment->typeId);
+    if (!type) return;
+
+    // 如果装备可以飞行，不受地形影响
+    if (type->canFly) {
+        equipment->currentSpeed = type->maxSpeed;
+        return;
+    }
+
+    // 根据地形类型获取对应的速度倍率
+    float speedMultiplier;
+    switch (terrainType) {
+        case TERRAIN_PLAIN:
+            speedMultiplier = type->plainSpeed;
+            break;
+        case TERRAIN_MOUNTAIN:
+            speedMultiplier = type->mountainSpeed;
+            break;
+        case TERRAIN_FOREST:
+            speedMultiplier = type->forestSpeed;
+            break;
+        case TERRAIN_WATER:
+            speedMultiplier = type->waterSpeed;
+            break;
+        case TERRAIN_ROAD:
+            speedMultiplier = type->roadSpeed;
+            break;
+        default:
+            speedMultiplier = 1.0f;
+    }
+
+    // 更新当前速度
+    equipment->currentSpeed = type->maxSpeed * speedMultiplier;
+}
+
+// 获取装备在地形上的实际移动速度
+float getEquipmentTerrainSpeed(Equipment* equipment, int terrainType) {
+    if (!equipment || !equipment->isActive) return 0.0f;
+
+    EquipmentType* type = getEquipmentTypeById(equipment->typeId);
+    if (!type) return 0.0f;
+
+    // 如果装备可以飞行，不受地形影响
+    if (type->canFly) {
+        return type->maxSpeed;
+    }
+
+    // 根据地形类型获取对应的速度倍率
+    float speedMultiplier;
+    switch (terrainType) {
+        case TERRAIN_PLAIN:
+            speedMultiplier = type->plainSpeed;
+            break;
+        case TERRAIN_MOUNTAIN:
+            speedMultiplier = type->mountainSpeed;
+            break;
+        case TERRAIN_FOREST:
+            speedMultiplier = type->forestSpeed;
+            break;
+        case TERRAIN_WATER:
+            speedMultiplier = type->waterSpeed;
+            break;
+        case TERRAIN_ROAD:
+            speedMultiplier = type->roadSpeed;
+            break;
+        default:
+            speedMultiplier = 1.0f;
+    }
+
+    return type->maxSpeed * speedMultiplier;
 } 
