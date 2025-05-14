@@ -14,7 +14,7 @@
 使用GCC编译器：
 
 ```bash
-gcc main.c battlefield.c equipment.c simulation.c -o battlefield_simulator -lm
+gcc -Wall -Wextra -o battlefield_simulator main.c battlefield.c equipment.c simulation.c menu.c -lm
 ```
 
 ## 如何运行
