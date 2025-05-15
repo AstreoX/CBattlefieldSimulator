@@ -5,6 +5,7 @@
 #include <conio.h>
 #include <windows.h>
 #include <math.h>
+#include <time.h>
 #include "simulation.h"
 
 // 计算字符串的显示宽度（考虑中文字符占两个宽度）
@@ -250,37 +251,40 @@ int showMainMenu() {
         clearScreen();
         displayWarTitle();
         
-        int consoleWidth = getConsoleWidth();
-        int tableWidth = consoleWidth > 70 ? 50 : consoleWidth - 10;
-        if (tableWidth < 30) tableWidth = 30;
+        int width = getConsoleWidth();
         
-        drawTableBorder('+', '+', '+', '-', tableWidth);
-        drawTableRow("主菜单", tableWidth);
-        drawTableBorder('+', '+', '+', '-', tableWidth);
+        drawTableBorder('+', '+', '+', '-', width);
+        drawTableRow("战场模拟器主菜单", width);
+        drawTableBorder('+', '+', '+', '-', width);
+        drawTableRow("1. 开始战场模拟", width);
+        drawTableRow("2. 查看装备列表", width);
+        drawTableRow("3. 地形系统测试", width);
+        drawTableRow("0. 退出程序", width);
+        drawTableBorder('+', '+', '+', '-', width);
         
-        // 使用表格样式显示菜单选项，保持一致的对齐
-        printf("\n");
-        drawTableBorder('+', '+', '+', '-', tableWidth);
-        drawTableRow("1. 开始游戏", tableWidth);
-        drawTableRow("2. 查看武器装备", tableWidth);
-        drawTableRow("0. 退出游戏", tableWidth);
-        drawTableBorder('+', '+', '+', '-', tableWidth);
-        
-        printf("\n请选择: ");
+        printf("\n请选择操作: ");
         scanf("%d", &choice);
         
         switch (choice) {
             case 1:
+                // 开始战场模拟
                 startBattleSimulation();
                 break;
             case 2:
+                // 显示装备列表
                 showEquipmentListMenu();
                 break;
+            case 3:
+                // 地形系统测试
+                testTerrainSystem();
+                break;
             case 0:
+                // 退出程序
                 return 0;
             default:
-                printf("无效选择，请重新输入！\n");
+                printf("\n无效选择，请重新输入!\n");
                 waitForKeyPress();
+                break;
         }
     }
     
@@ -720,13 +724,37 @@ void drawAttackRange(int attackRadius) {
 void startBattleSimulation() {
     clearScreen();
     
-    // 初始化战场
+    // 初始化战场 - 扩大为120列60行
     Battlefield battlefield;
-    initBattlefield(&battlefield, 80, 60);
+    initBattlefield(&battlefield, 120, 60);
     
     // 加载装备
     loadEquipmentTypes("equipment_types.txt");
     loadEquipmentInteractions("equipment_interactions.txt");
+    
+    // 提示是否生成地形
+    printf("是否生成地形? (1=是, 0=否): ");
+    int useTerrain;
+    scanf("%d", &useTerrain);
+    
+    if (useTerrain) {
+        // 询问是否使用高级地形选项
+        printf("是否使用高级地形选项? (1=是, 0=否): ");
+        int useAdvancedOptions;
+        scanf("%d", &useAdvancedOptions);
+        
+        if (useAdvancedOptions) {
+            // 使用地形生成菜单
+            showTerrainGenerationMenu(&battlefield);
+        } else {
+            // 使用默认比例尺和随机种子生成地形
+            float scale = 10.0f;
+            int seed = (int)time(NULL);
+            printf("使用默认设置生成地形...\n");
+            generateBattlefieldTerrain(&battlefield, scale, seed);
+            printf("地形生成完成！\n");
+        }
+    }
     
     printf("战场已初始化，开始部署指挥部...\n");
     waitForKeyPress();
@@ -772,4 +800,223 @@ void startBattleSimulation() {
     
     // 释放资源
     freeBattlefield(&battlefield);
+}
+
+// 显示地形生成菜单
+void showTerrainGenerationMenu(Battlefield* battlefield) {
+    int consoleWidth = getConsoleWidth();
+    int tableWidth = consoleWidth > 80 ? 80 : consoleWidth - 4;
+    int choice = 0;
+    float terrainScale = 10.0f; // 默认地形比例尺
+    int seed = (int)time(NULL); // 默认随机种子
+    NoiseAlgorithmType algorithmType = NOISE_FRACTAL_BROWNIAN; // 默认使用分形布朗运动
+    
+    while (1) {
+        clearScreen();
+        displayWarTitle();
+        
+        printf("\n");
+        printCentered("地形生成系统", tableWidth);
+        printf("\n");
+        
+        drawTableBorder('+', '+', '+', '-', tableWidth);
+        drawTableRow("通过噪声算法生成逼真的战场地形", tableWidth);
+        drawTableBorder('+', '+', '+', '-', tableWidth);
+        
+        char scaleInfo[100];
+        sprintf(scaleInfo, "当前地形比例尺: %.1f (较大的值会生成更细致的地形)", terrainScale);
+        drawTableRow(scaleInfo, tableWidth);
+        
+        char seedInfo[100];
+        sprintf(seedInfo, "当前随机种子: %d", seed);
+        drawTableRow(seedInfo, tableWidth);
+        
+        char algoInfo[100];
+        sprintf(algoInfo, "当前地形算法: %s", getNoiseAlgorithmName(algorithmType));
+        drawTableRow(algoInfo, tableWidth);
+        
+        drawTableBorder('+', '+', '+', '-', tableWidth);
+        
+        printf("\n");
+        printf("1. 调整地形比例尺\n");
+        printf("2. 设置随机种子\n");
+        printf("3. 选择地形生成算法\n");
+        printf("4. 生成地形\n");
+        printf("5. 预览地形\n");
+        printf("0. 返回上级菜单\n");
+        printf("\n");
+        printf("请选择一个选项 (0-5): ");
+        
+        scanf("%d", &choice);
+        
+        switch (choice) {
+            case 0:
+                return;
+            
+            case 1: {
+                printf("请输入地形比例尺 (1.0-50.0, 较大的值会生成更细致的地形): ");
+                scanf("%f", &terrainScale);
+                if (terrainScale < 1.0f) terrainScale = 1.0f;
+                if (terrainScale > 50.0f) terrainScale = 50.0f;
+                break;
+            }
+            
+            case 2: {
+                printf("请输入随机种子 (0为随机生成): ");
+                scanf("%d", &seed);
+                if (seed == 0) {
+                    seed = (int)time(NULL);
+                    printf("已生成随机种子: %d\n", seed);
+                    waitForKeyPress();
+                }
+                break;
+            }
+            
+            case 3: {
+                showNoiseAlgorithmSelectionMenu(&algorithmType);
+                break;
+            }
+            
+            case 4: {
+                // 使用用户选择的算法生成地形
+                generateBattlefieldTerrainWithAlgorithm(battlefield, terrainScale, seed, algorithmType);
+                printf("地形生成完成！\n");
+                waitForKeyPress();
+                break;
+            }
+            
+            case 5: {
+                clearScreen();
+                if (!battlefield->useTerrainSystem) {
+                    printf("请先生成地形！\n");
+                    waitForKeyPress();
+                    break;
+                }
+                
+                printf("地形预览 (高度范围: -3 到 5, 负数为水域)\n");
+                printf("颜色示意: ");
+                
+                HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+                WORD defaultColor = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
+                
+                for (int i = TERRAIN_WATER; i <= TERRAIN_MOUNTAIN_2; i++) {
+                    TerrainType type = (TerrainType)i;
+                    SetConsoleTextAttribute(hConsole, terrain_getTerrainColor(type));
+                    printf("%s", getTerrainChar(type));
+                    SetConsoleTextAttribute(hConsole, defaultColor);
+                    printf(" ");
+                }
+                printf("\n\n");
+                
+                // 显示地形图
+                renderBattlefield(battlefield, TEAM_NONE);
+                
+                printf("\n按任意键返回...\n");
+                waitForKeyPress();
+                break;
+            }
+            
+            default:
+                printf("无效选项，请重试\n");
+                waitForKeyPress();
+                break;
+        }
+    }
+}
+
+// 显示地形图例
+void displayTerrainLegend() {
+    printf("地形图例: ");
+    for (int i = 0; i < TERRAIN_TYPE_COUNT; i++) {
+        TerrainType type = (TerrainType)i;
+        HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+        SetConsoleTextAttribute(hConsole, terrain_getTerrainColor(type));
+        printf("%s", getTerrainChar(type));
+        SetConsoleTextAttribute(hConsole, 7); // 重置为默认颜色
+        printf("=%s ", getTerrainDescription(type));
+    }
+    printf("\n");
+}
+
+// 获取噪声算法名称
+const char* getNoiseAlgorithmName(NoiseAlgorithmType type) {
+    switch (type) {
+        case NOISE_PERLIN:
+            return "柏林噪声 (平滑变化)";
+        case NOISE_SIMPLEX:
+            return "单纯形噪声 (高性能)";
+        case NOISE_FRACTAL_BROWNIAN:
+            return "分形布朗运动 (自然地形)";
+        case NOISE_DOMAIN_WARPING:
+            return "域变形噪声 (扭曲地形)";
+        case NOISE_RIDGED_MULTI:
+            return "山脊多重分形 (山脉地形)";
+        default:
+            return "未知算法";
+    }
+}
+
+// 显示噪声算法选择菜单
+void showNoiseAlgorithmSelectionMenu(NoiseAlgorithmType* algorithmType) {
+    int consoleWidth = getConsoleWidth();
+    int tableWidth = consoleWidth > 80 ? 80 : consoleWidth - 4;
+    int choice = 0;
+    
+    clearScreen();
+    displayWarTitle();
+    
+    printf("\n");
+    printCentered("地形生成算法选择", tableWidth);
+    printf("\n");
+    
+    drawTableBorder('+', '+', '+', '-', tableWidth);
+    drawTableRow("不同的噪声算法会生成不同风格的地形", tableWidth);
+    drawTableBorder('+', '+', '+', '-', tableWidth);
+    
+    // 当前选择的算法
+    char currentAlgo[100];
+    sprintf(currentAlgo, "当前选择: %s", getNoiseAlgorithmName(*algorithmType));
+    drawTableRow(currentAlgo, tableWidth);
+    drawTableBorder('+', '+', '+', '-', tableWidth);
+    
+    printf("\n");
+    printf("可用算法:\n");
+    printf("1. 柏林噪声 - 经典地形算法，产生平滑的地形变化\n");
+    printf("2. 单纯形噪声 - 类似柏林噪声，但性能更高\n");
+    printf("3. 分形布朗运动 - 多层叠加噪声，产生自然逼真的地形\n");
+    printf("4. 域变形噪声 - 扭曲的地形，产生更加复杂的地形特征\n");
+    printf("5. 山脊多重分形 - 特别适合生成山脉地形\n");
+    printf("0. 返回上级菜单\n");
+    printf("\n");
+    printf("请选择一个算法 (0-5): ");
+    
+    scanf("%d", &choice);
+    
+    switch (choice) {
+        case 0:
+            return;
+        case 1:
+            *algorithmType = NOISE_PERLIN;
+            break;
+        case 2:
+            *algorithmType = NOISE_SIMPLEX;
+            break;
+        case 3:
+            *algorithmType = NOISE_FRACTAL_BROWNIAN;
+            break;
+        case 4:
+            *algorithmType = NOISE_DOMAIN_WARPING;
+            break;
+        case 5:
+            *algorithmType = NOISE_RIDGED_MULTI;
+            break;
+        default:
+            printf("无效选项，默认使用分形布朗运动\n");
+            *algorithmType = NOISE_FRACTAL_BROWNIAN;
+            waitForKeyPress();
+            break;
+    }
+    
+    printf("已选择: %s\n", getNoiseAlgorithmName(*algorithmType));
+    waitForKeyPress();
 } 

@@ -2,6 +2,8 @@
 #define BATTLEFIELD_H
 
 #include "equipment.h"
+#include "terrain.h"
+#include "terrain_generation.h"
 
 // 战场格子状态
 typedef enum {
@@ -34,6 +36,8 @@ typedef struct {
     Equipment* blueHeadquarters; // 蓝方指挥部
     int redHQDeployed;           // 红方指挥部是否已部署
     int blueHQDeployed;          // 蓝方指挥部是否已部署
+    Terrain** terrain;           // 地形数据
+    int useTerrainSystem;        // 是否使用地形系统
 } Battlefield;
 
 // 初始化战场
@@ -72,5 +76,11 @@ int hasPathObstacle(Battlefield* battlefield, int x1, int y1, int x2, int y2, in
 
 // 占用4x4区域部署指挥部
 int occupyHeadquartersArea(Battlefield* battlefield, int x, int y, Team team, Equipment* headquarters);
+
+// 生成地形
+void generateBattlefieldTerrain(Battlefield* battlefield, float scale, int seed);
+
+// 使用指定算法生成地形
+void generateBattlefieldTerrainWithAlgorithm(Battlefield* battlefield, float scale, int seed, NoiseAlgorithmType algorithmType);
 
 #endif // BATTLEFIELD_H 

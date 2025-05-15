@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <conio.h>
 #include <string.h>
+#include <windows.h>
 
 #define MAX_EQUIPMENTS_PER_TEAM 50
 #define DEFAULT_BUDGET 10000
@@ -45,6 +46,10 @@ void initBattlefield(Battlefield* battlefield, int width, int height) {
     battlefield->blueHeadquarters = NULL;
     battlefield->redHQDeployed = 0;
     battlefield->blueHQDeployed = 0;
+    
+    // 初始化地形系统
+    battlefield->terrain = NULL;
+    battlefield->useTerrainSystem = 0;
 }
 
 // 释放战场资源
@@ -80,6 +85,13 @@ void freeBattlefield(Battlefield* battlefield) {
     
     if (battlefield->blueHeadquarters) {
         free(battlefield->blueHeadquarters);
+    }
+    
+    // 释放地形系统内存
+    if (battlefield->terrain) {
+        freeTerrain(battlefield->height, battlefield->terrain);
+        free(battlefield->terrain);
+        battlefield->terrain = NULL;
     }
 }
 
@@ -243,21 +255,39 @@ char getDirectionChar(int dirX, int dirY) {
 
 // 渲染战场
 void renderBattlefield(Battlefield* battlefield, Team viewOnly) {
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    WORD defaultColor = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
+    
     printf("战场状态 (红方: %d, 蓝方: %d)\n", battlefield->redCount, battlefield->blueCount);
     printf("红方预算: %d/%d, 蓝方预算: %d/%d\n",
            battlefield->redRemainingBudget, battlefield->redBudget,
            battlefield->blueRemainingBudget, battlefield->blueBudget);
 
-    // 打印X坐标标题
+    // 打印X坐标标题 - 支持三位数列号
     printf("   ");
     for (int j = 0; j < battlefield->width; j++) {
         if (j % 10 == 0) {
-            printf("%d", j / 10);
+            // 显示十位数
+            int tens = (j / 10) % 10;
+            printf("%d", tens);
         } else {
             printf(" ");
         }
     }
     printf("\n");
+    
+    // 对于超过100的列显示百位数
+    if (battlefield->width > 100) {
+        printf("   ");
+        for (int j = 0; j < battlefield->width; j++) {
+            if (j % 100 == 0 && j > 0) {
+                printf("%d", j / 100);
+            } else {
+                printf(" ");
+            }
+        }
+        printf("\n");
+    }
     
     printf("   ");
     for (int j = 0; j < battlefield->width; j++) {
@@ -317,7 +347,15 @@ void renderBattlefield(Battlefield* battlefield, Team viewOnly) {
                     }
                     
                     if (!directionFound) {
-                        printf(" ");
+                        // 如果启用了地形系统，显示地形
+                        if (battlefield->useTerrainSystem) {
+                            TerrainType terrainType = battlefield->terrain[i][j].type;
+                            SetConsoleTextAttribute(hConsole, terrain_getTerrainColor(terrainType));
+                            printf("%s", getTerrainChar(terrainType));
+                            SetConsoleTextAttribute(hConsole, defaultColor);
+                        } else {
+                            printf(" ");
+                        }
                     }
                     continue;
                 }
@@ -348,7 +386,15 @@ void renderBattlefield(Battlefield* battlefield, Team viewOnly) {
                 }
                 
                 if (!directionFound) {
-                    printf(" ");
+                    // 如果启用了地形系统，显示地形
+                    if (battlefield->useTerrainSystem) {
+                        TerrainType terrainType = battlefield->terrain[i][j].type;
+                        SetConsoleTextAttribute(hConsole, terrain_getTerrainColor(terrainType));
+                        printf("%s", getTerrainChar(terrainType));
+                        SetConsoleTextAttribute(hConsole, defaultColor);
+                    } else {
+                        printf(" ");
+                    }
                 }
             } else if (cell->status == CELL_OCCUPIED_RED) {
                 if (cell->equipment && cell->equipment->isActive) {
@@ -681,4 +727,48 @@ int deployHeadquarters(Battlefield* battlefield, Team team) {
     
     printf("%s指挥部部署成功！\n", teamName);
     return 1;
+}
+
+// 生成战场地形
+void generateBattlefieldTerrain(Battlefield* battlefield, float scale, int seed) {
+    // 如果地形已经存在，先释放
+    if (battlefield->terrain) {
+        freeTerrain(battlefield->height, battlefield->terrain);
+    }
+    
+    // 初始化地形系统
+    battlefield->terrain = (Terrain**)malloc(battlefield->height * sizeof(Terrain*));
+    initTerrain(battlefield->width, battlefield->height, battlefield->terrain);
+    
+    // 生成地形
+    generateTerrain(battlefield->width, battlefield->height, battlefield->terrain, scale, seed);
+    
+    // 启用地形系统
+    battlefield->useTerrainSystem = 1;
+}
+
+// 使用指定算法生成战场地形
+void generateBattlefieldTerrainWithAlgorithm(Battlefield* battlefield, float scale, int seed, NoiseAlgorithmType algorithmType) {
+    // 如果地形已经存在，先释放
+    if (battlefield->terrain) {
+        freeTerrain(battlefield->height, battlefield->terrain);
+    }
+    
+    // 初始化地形系统
+    battlefield->terrain = (Terrain**)malloc(battlefield->height * sizeof(Terrain*));
+    initTerrain(battlefield->width, battlefield->height, battlefield->terrain);
+    
+    // 创建地形生成配置
+    TerrainGeneratorConfig config = getDefaultTerrainConfig();
+    config.scale = scale;
+    config.seed = seed;
+    
+    // 使用指定算法生成地形
+    generateTerrainWithAlgorithm(battlefield->width, battlefield->height, battlefield->terrain, algorithmType, config);
+    
+    // 平滑地形，使水域和地形过渡更自然
+    smoothTerrain(battlefield->width, battlefield->height, battlefield->terrain, 2);
+    
+    // 启用地形系统
+    battlefield->useTerrainSystem = 1;
 } 

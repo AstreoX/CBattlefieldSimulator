@@ -3,6 +3,8 @@
 
 #include "battlefield.h"
 #include "equipment.h"
+#include "terrain.h"
+#include "terrain_generation.h"
 
 // 计算字符串的显示宽度（考虑中文字符占两个宽度）
 int getStringDisplayWidth(const char* str);
@@ -51,5 +53,20 @@ void drawAttackRange(int attackRadius);
 
 // 等待按键
 void waitForKeyPress();
+
+// 显示地形生成菜单
+void showTerrainGenerationMenu(Battlefield* battlefield);
+
+// 获取噪声算法名称
+const char* getNoiseAlgorithmName(NoiseAlgorithmType type);
+
+// 显示噪声算法选择菜单
+void showNoiseAlgorithmSelectionMenu(NoiseAlgorithmType* algorithmType);
+
+// 显示地形图例
+void displayTerrainLegend();
+
+// 地形系统测试函数
+void testTerrainSystem();
 
 #endif // MENU_H 
