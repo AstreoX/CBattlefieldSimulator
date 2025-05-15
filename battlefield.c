@@ -248,6 +248,28 @@ void renderBattlefield(Battlefield* battlefield, Team viewOnly) {
            battlefield->redRemainingBudget, battlefield->redBudget,
            battlefield->blueRemainingBudget, battlefield->blueBudget);
 
+    // 显示红方大本营血量
+    if (battlefield->redHQDeployed && battlefield->redHeadquarters) {
+        if (battlefield->redHeadquarters->isActive) {
+            printf("红方大本营血量: %d/%d\n", battlefield->redHeadquarters->currentHealth, getEquipmentTypeById(battlefield->redHeadquarters->typeId)->maxHealth);
+        } else {
+            printf("红方大本营: 已被摧毁\n");
+        }
+    } else {
+        printf("红方大本营: 未部署\n");
+    }
+
+    // 显示蓝方大本营血量
+    if (battlefield->blueHQDeployed && battlefield->blueHeadquarters) {
+        if (battlefield->blueHeadquarters->isActive) {
+            printf("蓝方大本营血量: %d/%d\n", battlefield->blueHeadquarters->currentHealth, getEquipmentTypeById(battlefield->blueHeadquarters->typeId)->maxHealth);
+        } else {
+            printf("蓝方大本营: 已被摧毁\n");
+        }
+    } else {
+        printf("蓝方大本营: 未部署\n");
+    }
+
     // 打印X坐标标题
     printf("   ");
     for (int j = 0; j < battlefield->width; j++) {
