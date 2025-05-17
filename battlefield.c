@@ -14,8 +14,21 @@ void displayEquipmentInfo(Equipment* equipment);
 void initBattlefield(Battlefield* battlefield, int width, int height) {
     battlefield->width = width;
     battlefield->height = height;
+    battlefield->redCount = 0;
+    battlefield->blueCount = 0;
+    battlefield->maxEquipments = MAX_EQUIPMENTS_PER_TEAM;
+    battlefield->redBudget = DEFAULT_BUDGET;
+    battlefield->blueBudget = DEFAULT_BUDGET;
+    battlefield->redRemainingBudget = DEFAULT_BUDGET;
+    battlefield->blueRemainingBudget = DEFAULT_BUDGET;
     
-    // 分配单元格数组内存
+    // 初始化指挥部相关变量
+    battlefield->redHeadquarters = NULL;
+    battlefield->blueHeadquarters = NULL;
+    battlefield->redHQDeployed = 0;
+    battlefield->blueHQDeployed = 0;
+
+    // 分配二维格子数组内存
     battlefield->cells = (Cell**)malloc(height * sizeof(Cell*));
     for (int i = 0; i < height; i++) {
         battlefield->cells[i] = (Cell*)malloc(width * sizeof(Cell));
